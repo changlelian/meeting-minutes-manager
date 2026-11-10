@@ -1,0 +1,39 @@
+{
+  "name": "meeting-minutes-demo",
+  "version": "0.1.0",
+  "productName": "Meeting Minutes",
+  "description": "Desktop client for recording, transcribing, and summarizing meetings.",
+  "private": true,
+  "type": "module",
+  "main": "desktop/main.mjs",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "desktop": "electron .",
+    "desktop:pack": "electron-builder --win --dir",
+    "desktop:dist": "electron-builder --win"
+  },
+  "dependencies": {
+    "ws": "^8.22.2"
+  },
+  "build": {
+    "appId": "com.changlelian.meetingminutesmanager",
+    "asar": true,
+    "files": [
+      "desktop/**/*",
+      "server.mjs",
+      "index.html"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "artifactName": "MeetingMinutes-Setup-${version}-${arch}.${ext}"
+    }
+  },
+  "devDependencies": {
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0"
+  }
+}

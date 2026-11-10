@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>会记 · 会议纪要演示</title>
+  <style>
+    :root { --paper:#f7f7f5; --surface:#fff; --forest:#1a3c2b; --forest-light:#285440; --ink:#20211f; --muted:#6b6c68; --hairline:rgba(58,58,56,.2); --amber:#c77b18; --amber-wash:#fff7e8; --mint:#2c8a62; --danger:#b34435; --danger-wash:#fff0ed; --radius:5px; --mono:"Cascadia Mono","JetBrains Mono",Consolas,monospace; --sans:"Microsoft YaHei UI","Microsoft YaHei","Segoe UI",sans-serif; }
+    * { box-sizing:border-box; }
+    html { background:var(--paper); }
+    body { min-width:320px; min-height:100vh; margin:0; background-color:var(--paper); background-image:linear-gradient(var(--hairline) 1px,transparent 1px),linear-gradient(90deg,var(--hairline) 1px,transparent 1px); background-size:72px 72px; color:var(--ink); font-family:var(--sans); }
+    button,input,textarea { font:inherit; }
+    button { cursor:pointer; border:0; }
+    button:disabled { cursor:not-allowed; opacity:.52; }
+    button:focus-visible,input:focus-visible,textarea:focus-visible { outline:3px solid rgba(26,60,43,.28); outline-offset:2px; }
+    .app-shell { width:min(1500px,calc(100% - 32px)); min-height:calc(100vh - 32px); margin:16px auto; display:flex; flex-direction:column; border:1px solid var(--hairline); border-radius:7px; overflow:hidden; background:var(--paper); }
+    .topbar { min-height:72px; padding:14px 22px; display:flex; align-items:center; justify-content:space-between; gap:18px; border-bottom:1px solid var(--hairline); background:var(--surface); }
+    .brand-cluster,.topbar-actions,.status-chip,.record-primary,.footer-actions,.recording-meta,.panel-title-row,.dialog-actions { display:flex; align-items:center; }
+    .brand-cluster { gap:14px; }
+    .brand-mark { width:34px; height:34px; display:grid; place-items:center; border-radius:3px; background:var(--forest); color:#fff; font-family:var(--mono); font-size:13px; font-weight:800; letter-spacing:-.1em; }
+    .brand-name { margin:0; color:var(--forest); font-size:21px; line-height:1; letter-spacing:-.07em; }
+    .brand-subtitle { margin:4px 0 0; color:var(--muted); font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; }
+    .topbar-actions { gap:10px; }
+    .status-chip { gap:7px; padding:7px 10px; border:1px solid var(--hairline); border-radius:3px; color:var(--muted); background:var(--paper); font-family:var(--mono); font-size:10px; letter-spacing:.04em; }
+    .status-dot { width:7px; height:7px; flex:0 0 auto; border-radius:50%; background:var(--mint); }
+    .status-dot.demo { background:var(--amber); }
+    .icon-button,.secondary-button,.outline-button { min-height:34px; padding:0 10px; display:inline-flex; align-items:center; justify-content:center; gap:7px; border:1px solid var(--hairline); border-radius:3px; color:var(--forest); background:var(--surface); font-size:12px; transition:background .18s ease,border-color .18s ease,color .18s ease; }
+    .icon-button { width:34px; padding:0; }
+    .icon-button:hover,.secondary-button:hover,.outline-button:hover { border-color:var(--forest); background:#f3f6f3; }
+    .workspace { min-height:0; flex:1; padding:20px 22px; display:flex; flex-direction:column; gap:18px; }
+    .control-deck { min-height:94px; padding:14px 16px; display:grid; grid-template-columns:minmax(230px,1.1fr) minmax(300px,1.25fr) minmax(245px,1fr); align-items:stretch; border:1px solid var(--hairline); border-radius:var(--radius); background:var(--surface); }
+    .control-cell { min-width:0; padding:0 16px; display:flex; align-items:center; gap:16px; }
+    .control-cell + .control-cell { border-left:1px solid var(--hairline); }
+    .control-cell:first-child { padding-left:0; }
+    .control-cell:last-child { padding-right:0; justify-content:space-between; }
+    .record-primary { min-height:48px; padding:0 15px; gap:10px; border-radius:3px; color:#fff; background:var(--forest); font-size:13px; font-weight:700; transition:background .18s ease,transform .18s ease; }
+    .record-primary:hover { background:var(--forest-light); }
+    .record-primary:active { transform:translateY(1px); }
+    .record-primary.is-recording { background:var(--danger); }
+    .record-symbol { width:14px; height:14px; border:2px solid currentColor; border-radius:50%; position:relative; }
+    .record-primary.is-recording .record-symbol { border-radius:2px; border-width:0; background:currentColor; }
+    .timer-block { min-width:86px; }
+    .eyebrow { margin:0 0 5px; color:var(--muted); font-family:var(--mono); font-size:9px; letter-spacing:.1em; text-transform:uppercase; }
+    .timer-value { color:var(--ink); font-family:var(--mono); font-size:18px; font-variant-numeric:tabular-nums; letter-spacing:-.06em; }
+    .field-stack { width:100%; }
+    .field-label,.visually-hidden { display:block; color:var(--muted); font-family:var(--mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase; }
+    .field-label { margin-bottom:6px; }
+    .meeting-input { width:100%; padding:3px 0 5px; border:0; border-bottom:1px solid var(--hairline); color:var(--ink); background:transparent; font-size:14px; font-weight:700; }
+    .meeting-input:focus-visible { outline-offset:4px; }
+    .recording-meta { gap:9px; color:var(--muted); font-size:12px; }
+    .recording-meta.is-recording { color:var(--danger); }
+    .pulse-dot { width:8px; height:8px; flex:0 0 auto; border-radius:50%; background:var(--amber); }
+    .recording-meta.is-recording .pulse-dot { background:var(--danger); animation:pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { opacity:.35; transform:scale(.85); } 50% { opacity:1; transform:scale(1); } }
+    .compact-actions { display:flex; gap:8px; }
+    .work-grid { min-height:0; flex:1; display:grid; grid-template-columns:minmax(0,55fr) minmax(0,45fr); gap:18px; }
+    .panel { min-height:460px; display:flex; flex-direction:column; border:1px solid var(--hairline); border-radius:var(--radius); overflow:hidden; background:var(--surface); }
+    .panel-header { min-height:72px; padding:14px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px; border-bottom:1px solid var(--hairline); }
+    .panel-title-row { gap:9px; }
+    .panel-title { margin:0; color:var(--forest); font-size:16px; letter-spacing:-.04em; }
+    .panel-meta { margin:5px 0 0; color:var(--muted); font-size:11px; }
+    .live-label { padding:5px 8px; display:inline-flex; align-items:center; gap:6px; border:1px solid var(--hairline); border-radius:2px; color:var(--amber); background:var(--amber-wash); font-family:var(--mono); font-size:10px; }
+    .live-label.is-recording { color:var(--danger); background:var(--danger-wash); }
+    .live-label .status-dot { width:6px; height:6px; background:currentColor; }
+    .transcript-wrap { min-height:0; flex:1; padding:16px; display:flex; flex-direction:column; gap:10px; }
+    .transcript { width:100%; min-height:290px; flex:1; resize:vertical; padding:14px; border:1px solid transparent; border-radius:3px; color:var(--ink); background:var(--paper); font-family:var(--sans); font-size:14px; line-height:1.95; }
+    .transcript:hover,.transcript:focus { border-color:rgba(26,60,43,.35); }
+    .transcript-help { margin:0; color:var(--muted); font-size:11px; line-height:1.6; }
+    .primary-button { min-height:34px; padding:0 11px; display:inline-flex; align-items:center; gap:7px; border-radius:3px; color:#fff; background:var(--forest); font-size:12px; font-weight:700; transition:background .18s ease; }
+    .primary-button:hover { background:var(--forest-light); }
+    .danger-button { min-height:34px; padding:0 11px; display:inline-flex; align-items:center; gap:7px; border-radius:3px; color:#fff; background:var(--danger); font-size:12px; font-weight:700; transition:background .18s ease; }
+    .danger-button:hover { background:#96372c; }
+    .minutes-content { min-height:0; flex:1; overflow:auto; padding:16px; }
+    .minutes-section + .minutes-section { margin-top:17px; }
+    .minutes-heading { margin:0 0 8px; color:var(--forest); font-size:12px; font-weight:800; letter-spacing:.02em; }
+    .overview-card { padding:12px; border:1px solid var(--hairline); border-left:3px solid var(--forest); border-radius:3px; background:var(--paper); color:var(--ink); font-size:12px; line-height:1.75; }
+    .simple-list,.question-list { margin:0; padding:0; list-style:none; color:var(--ink); font-size:12px; line-height:1.65; }
+    .simple-list li { padding:7px 0 7px 25px; position:relative; border-bottom:1px solid rgba(58,58,56,.12); }
+    .simple-list li::before { position:absolute; left:0; top:8px; content:counter(item,decimal-leading-zero); counter-increment:item; color:var(--mint); font-family:var(--mono); font-size:10px; }
+    .simple-list { counter-reset:item; }
+    .action-table { width:100%; border-collapse:collapse; overflow:hidden; border:1px solid var(--hairline); border-radius:3px; font-size:11px; }
+    .action-table th,.action-table td { padding:9px 8px; border-bottom:1px solid var(--hairline); text-align:left; vertical-align:top; }
+    .action-table tr:last-child td { border-bottom:0; }
+    .action-table th { color:var(--muted); background:var(--paper); font-family:var(--mono); font-size:9px; font-weight:500; letter-spacing:.04em; text-transform:uppercase; }
+    .action-table td:last-child { color:var(--amber); font-family:var(--mono); white-space:nowrap; }
+    .question-list li { padding:7px 10px; border-left:2px solid var(--amber); background:var(--amber-wash); }
+    .question-list li + li { margin-top:7px; }
+    .app-footer { min-height:50px; padding:10px 22px; display:flex; align-items:center; justify-content:space-between; gap:14px; border-top:1px solid var(--hairline); background:var(--surface); }
+    .feedback { max-width:70%; color:var(--muted); font-size:11px; line-height:1.5; }
+    .feedback::before { content:"●"; margin-right:7px; color:var(--mint); }
+    .feedback.is-warning::before { color:var(--amber); }
+    .feedback.is-error::before { color:var(--danger); }
+    .footer-actions { gap:8px; }
+    .inline-svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-linecap:round; stroke-linejoin:round; stroke-width:1.8; }
+    dialog { width:min(520px,calc(100% - 32px)); padding:0; border:1px solid var(--hairline); border-radius:6px; color:var(--ink); background:var(--surface); box-shadow:0 18px 54px rgba(32,33,31,.18); }
+    dialog::backdrop { background:rgba(26,60,43,.2); }
+    .dialog-body { padding:22px; }
+    .dialog-title { margin:0 0 8px; color:var(--forest); font-size:18px; }
+    .dialog-copy { margin:0; color:var(--muted); font-size:13px; line-height:1.75; }
+    .integration-list { margin:16px 0; padding:0; list-style:none; }
+    .integration-list li { padding:10px 0; border-top:1px solid var(--hairline); font-size:12px; line-height:1.6; }
+    .integration-list strong { color:var(--forest); }
+    .dialog-actions { justify-content:flex-end; }
+    .discard-draft-dialog { width:min(440px,calc(100% - 32px)); }
+    .discard-draft-dialog .dialog-actions { gap:9px; margin-top:20px; }
+    .draft-restore-dialog { width:min(470px,calc(100% - 32px)); }
+    .draft-restore-dialog .dialog-actions { gap:9px; margin-top:20px; }
+    .draft-restore-status { min-height:18px; margin:14px 0 -4px; color:var(--muted); font-size:11px; line-height:1.55; }
+    .draft-restore-status.is-warning { color:var(--amber); }
+    .connection-form { display:grid; gap:12px; margin:18px 0 14px; padding:16px; border:1px solid var(--hairline); border-radius:var(--radius); background:var(--paper); }
+    .dialog-field { display:grid; gap:6px; }
+    .dialog-field label { color:var(--forest); font-size:11px; font-weight:700; }
+    .dialog-input,.dialog-select { width:100%; min-height:38px; padding:8px 10px; border:1px solid var(--hairline); border-radius:3px; color:var(--ink); background:var(--surface); font-size:12px; }
+    .connection-status { min-height:18px; margin:0; color:var(--muted); font-size:11px; line-height:1.55; }
+    .connection-status.is-warning { color:var(--amber); }
+    .connection-status.is-success { color:var(--mint); }
+    .connection-note { margin:0; color:var(--muted); font-size:11px; line-height:1.6; }
+    .history-button { position:relative; }
+    .history-count { min-width:17px; height:17px; padding:0 4px; display:inline-grid; place-items:center; border-radius:999px; color:#fff; background:var(--forest); font-family:var(--mono); font-size:9px; font-variant-numeric:tabular-nums; }
+    .history-dialog { width:min(1040px,calc(100% - 32px)); }
+    .history-dialog .dialog-body { padding:0; }
+    .history-dialog-header { min-height:68px; padding:18px 22px; display:flex; align-items:center; justify-content:space-between; gap:14px; border-bottom:1px solid var(--hairline); }
+    .history-dialog-header .dialog-title { margin:0; }
+    .history-dialog-content { min-height:480px; display:grid; grid-template-columns:minmax(230px,.78fr) minmax(0,1.45fr); }
+    .history-list-pane { min-height:0; padding:14px; border-right:1px solid var(--hairline); background:var(--paper); }
+    .history-list-label { margin:0 0 10px; color:var(--muted); font-family:var(--mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase; }
+    .history-list { max-height:525px; margin:0; padding:0; overflow:auto; list-style:none; }
+    .history-list li + li { margin-top:7px; }
+    .history-record { width:100%; padding:10px 11px; display:block; border:1px solid transparent; border-radius:3px; color:var(--ink); background:transparent; text-align:left; }
+    .history-record:hover { border-color:var(--hairline); background:var(--surface); }
+    .history-record[aria-current="true"] { border-color:var(--forest); background:var(--surface); }
+    .history-record-topic { display:block; overflow:hidden; font-size:12px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
+    .history-record time { display:block; margin-top:5px; color:var(--muted); font-family:var(--mono); font-size:10px; }
+    .history-empty { padding:18px 8px; color:var(--muted); font-size:12px; line-height:1.7; }
+    .history-detail { min-width:0; padding:18px 22px; overflow:auto; }
+    .history-detail-topic { margin:0; color:var(--forest); font-size:18px; letter-spacing:-.04em; }
+    .history-detail-time { margin:6px 0 16px; color:var(--muted); font-family:var(--mono); font-size:10px; }
+    .history-export-button { margin:-6px 0 17px; }
+    .history-export-status { min-height:18px; margin:-8px 0 17px; color:var(--muted); font-size:11px; line-height:1.55; }
+    .history-export-status.is-warning { color:var(--amber); }
+    .history-transcript { width:100%; min-height:130px; resize:vertical; padding:11px; border:1px solid var(--hairline); border-radius:3px; color:var(--ink); background:var(--paper); font-family:var(--sans); font-size:12px; line-height:1.75; }
+    .history-detail .minutes-section + .minutes-section { margin-top:15px; }
+    @media (max-width:700px) { .history-dialog-content { grid-template-columns:1fr; } .history-list-pane { border-right:0; border-bottom:1px solid var(--hairline); } .history-list { max-height:175px; } .history-detail { padding:16px; } }
+    .visually-hidden { width:1px; height:1px; padding:0; position:absolute; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    @media (max-width:1080px) { .control-deck { grid-template-columns:1fr 1fr; } .control-cell:last-child { grid-column:1 / -1; padding:14px 0 0; justify-content:space-between; border-left:0; border-top:1px solid var(--hairline); } }
+    @media (max-width:900px) { .app-shell { width:min(100% - 20px,760px); margin:10px auto; } .topbar,.workspace,.app-footer { padding-left:14px; padding-right:14px; } .work-grid { grid-template-columns:1fr; } .panel { min-height:420px; } .transcript { min-height:240px; } }
+    @media (max-width:620px) { .topbar { align-items:flex-start; flex-direction:column; } .topbar-actions { width:100%; justify-content:space-between; } .control-deck { grid-template-columns:1fr; } .control-cell { min-height:66px; padding:12px 0; } .control-cell + .control-cell { border-left:0; border-top:1px solid var(--hairline); } .control-cell:last-child { grid-column:auto; } .record-primary { flex:1; justify-content:center; } .feedback { max-width:100%; } .app-footer { align-items:flex-start; flex-direction:column; } .footer-actions { width:100%; } .footer-actions button { flex:1; } }
+    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms !important; transition-duration:.01ms !important; scroll-behavior:auto !important; } }
+
+    /* Quiet editorial workspace: soft depth, generous rhythm, no grid-paper texture. */
+    :root { --paper:#f6f6f2; --surface:rgba(255,255,255,.9); --forest:#183d2c; --forest-light:#285440; --ink:#20231f; --muted:#737872; --hairline:rgba(24,61,44,.13); --amber:#b9791d; --amber-wash:#fff8ed; --mint:#2b8060; --danger:#b2493b; --danger-wash:#fff1ef; --radius:16px; --control-radius:10px; --soft-shadow:0 12px 30px rgba(29,44,35,.07),0 2px 6px rgba(29,44,35,.035); }
+    html { background:var(--paper); }
+    body { background:radial-gradient(ellipse 44rem 32rem at 94% -9%,rgba(211,231,215,.72),transparent 68%),radial-gradient(ellipse 30rem 24rem at -8% 98%,rgba(236,240,228,.7),transparent 70%),var(--paper); }
+    button:focus-visible,input:focus-visible,textarea:focus-visible { outline:3px solid rgba(24,61,44,.26); outline-offset:3px; }
+    .app-shell { width:min(1500px,calc(100% - 48px)); min-height:calc(100vh - 48px); margin:24px auto; border:0; border-radius:0; overflow:visible; background:transparent; }
+    .topbar { min-height:76px; padding:15px 24px; border:1px solid var(--hairline); border-radius:var(--radius); background:rgba(255,255,255,.84); box-shadow:var(--soft-shadow); backdrop-filter:blur(14px); }
+    .brand-cluster { gap:12px; }
+    .brand-mark { width:38px; height:38px; border-radius:12px; background:var(--forest); box-shadow:0 6px 14px rgba(24,61,44,.17); font-size:14px; }
+    .brand-name { font-size:22px; letter-spacing:-.06em; }
+    .brand-subtitle { margin-top:5px; font-size:9px; letter-spacing:.12em; }
+    .topbar-actions { gap:9px; }
+    .status-chip { min-height:36px; gap:8px; padding:7px 11px; border-color:var(--hairline); border-radius:999px; background:rgba(234,243,236,.78); color:var(--forest); }
+    .status-dot { box-shadow:0 0 0 4px rgba(43,128,96,.1); }
+    .status-dot.demo { box-shadow:0 0 0 4px rgba(185,121,29,.1); }
+    .icon-button,.secondary-button,.outline-button { min-height:40px; border-color:var(--hairline); border-radius:var(--control-radius); background:rgba(255,255,255,.82); box-shadow:0 1px 0 rgba(255,255,255,.9) inset; font-size:12px; }
+    .icon-button { width:40px; }
+    .icon-button:hover,.secondary-button:hover,.outline-button:hover { border-color:rgba(24,61,44,.34); background:#fff; box-shadow:0 5px 14px rgba(29,44,35,.07); }
+    .workspace { padding:18px 0; gap:18px; }
+    .control-deck { min-height:102px; padding:16px 20px; border-color:var(--hairline); border-radius:var(--radius); background:rgba(255,255,255,.84); box-shadow:var(--soft-shadow); backdrop-filter:blur(12px); }
+    .control-cell { padding:0 20px; gap:17px; }
+    .control-cell + .control-cell { border-color:var(--hairline); }
+    .record-primary { min-height:48px; padding:0 17px; border-radius:11px; box-shadow:0 7px 16px rgba(24,61,44,.17); }
+    .record-primary:hover { box-shadow:0 9px 20px rgba(24,61,44,.21); }
+    .timer-value { font-size:20px; }
+    .meeting-input { padding:6px 0 8px; border-bottom-color:rgba(24,61,44,.2); }
+    .meeting-input:hover,.meeting-input:focus { border-bottom-color:var(--forest); }
+    .recording-meta { padding:8px 10px; border-radius:999px; background:rgba(246,246,242,.85); }
+    .compact-actions { gap:9px; }
+    .work-grid { gap:18px; }
+    .panel { min-height:490px; border-color:var(--hairline); border-radius:18px; background:rgba(255,255,255,.88); box-shadow:var(--soft-shadow); }
+    .panel-header { min-height:76px; padding:16px 20px; border-color:rgba(24,61,44,.1); }
+    .panel-title { font-size:17px; }
+    .panel-meta { margin-top:6px; }
+    .live-label { padding:6px 10px; border-color:rgba(185,121,29,.2); border-radius:999px; background:var(--amber-wash); }
+    .transcript-wrap { padding:18px 20px 20px; gap:11px; }
+    .transcript { min-height:300px; padding:16px; border-color:rgba(24,61,44,.08); border-radius:12px; background:rgba(247,249,246,.86); line-height:1.9; }
+    .transcript:hover,.transcript:focus { border-color:rgba(24,61,44,.28); background:#fff; }
+    .primary-button { min-height:40px; padding:0 14px; border-radius:var(--control-radius); box-shadow:0 5px 12px rgba(24,61,44,.14); }
+    .danger-button { min-height:40px; padding:0 14px; border-radius:var(--control-radius); box-shadow:0 5px 12px rgba(178,73,59,.16); }
+    .minutes-content { padding:18px 20px 20px; }
+    .overview-card { padding:14px; border-color:rgba(24,61,44,.1); border-left-width:3px; border-radius:12px; background:rgba(239,246,240,.7); }
+    .simple-list li { padding-top:8px; padding-bottom:8px; border-bottom-color:rgba(24,61,44,.1); }
+    .action-table { border-color:rgba(24,61,44,.12); border-radius:11px; }
+    .action-table th,.action-table td { padding:10px 9px; border-bottom-color:rgba(24,61,44,.1); }
+    .action-table th { background:rgba(234,243,236,.75); }
+    .question-list li { border-left-width:3px; border-radius:0 9px 9px 0; }
+    .app-footer { min-height:58px; padding:10px 18px; border:1px solid var(--hairline); border-radius:14px; background:rgba(255,255,255,.78); box-shadow:0 6px 20px rgba(29,44,35,.045); backdrop-filter:blur(12px); }
+    .feedback { max-width:74%; }
+    dialog { max-height:calc(100dvh - 32px); border-color:var(--hairline); border-radius:18px; background:rgba(255,255,255,.98); box-shadow:0 24px 64px rgba(24,43,33,.2); }
+    dialog::backdrop { background:rgba(21,46,33,.24); backdrop-filter:blur(3px); }
+    .dialog-body { padding:24px; }
+    .dialog-title { font-size:19px; letter-spacing:-.04em; }
+    .connection-form { padding:17px; border-color:rgba(24,61,44,.1); border-radius:14px; background:rgba(246,248,244,.86); }
+    .dialog-input,.dialog-select { min-height:40px; border-color:rgba(24,61,44,.16); border-radius:10px; background:#fff; }
+    .history-count { min-width:19px; height:19px; background:var(--forest); box-shadow:0 2px 5px rgba(24,61,44,.18); }
+    .history-dialog { width:min(1040px,calc(100% - 32px)); }
+    .history-dialog .dialog-body { max-height:calc(100dvh - 32px); overflow:auto; }
+    .history-dialog-header { min-height:78px; padding:18px 22px; border-color:rgba(24,61,44,.1); }
+    #history-local-note { display:inline-flex; align-items:center; gap:6px; margin-top:7px; color:var(--forest); font-size:11px; }
+    #history-local-note::before { width:7px; height:7px; border-radius:50%; background:var(--mint); box-shadow:0 0 0 3px rgba(43,128,96,.1); content:""; }
+    .history-filter { width:100%; min-height:40px; margin:0 0 12px; padding:8px 11px; border:1px solid rgba(24,61,44,.14); border-radius:10px; color:var(--ink); background:rgba(255,255,255,.86); font-size:12px; }
+    .history-filter::placeholder { color:var(--muted); }
+    .history-filter:hover,.history-filter:focus { border-color:rgba(24,61,44,.3); background:#fff; }
+    .history-dialog-content { height:min(525px,calc(100dvh - 162px)); min-height:0; max-height:calc(100dvh - 162px); grid-template-rows:minmax(0,1fr); }
+    .history-list-pane { min-height:0; padding:16px; display:flex; flex-direction:column; overflow:hidden; border-color:rgba(24,61,44,.1); background:rgba(246,248,244,.86); }
+    .history-list { min-height:0; max-height:none; flex:1; overflow:auto; }
+    .history-record { padding:12px; border-radius:10px; }
+    .history-record:hover { border-color:rgba(24,61,44,.16); background:rgba(255,255,255,.9); }
+    .history-record[aria-current="true"] { border-color:rgba(24,61,44,.28); border-left:3px solid var(--forest); background:#fff; box-shadow:0 4px 12px rgba(29,44,35,.06); }
+    .history-detail { min-height:0; padding:22px 24px; }
+    .history-transcript { padding:13px; border-color:rgba(24,61,44,.12); border-radius:11px; background:rgba(247,249,246,.86); }
+    @media (max-width:900px) { .app-shell { width:min(100% - 24px,760px); min-height:calc(100vh - 24px); margin:12px auto; } .topbar,.workspace,.app-footer { padding-left:16px; padding-right:16px; } .workspace { padding-top:14px; padding-bottom:14px; } }
+    @media (max-width:700px) { .history-dialog-content { height:calc(100dvh - 164px); min-height:0; max-height:calc(100dvh - 164px); grid-template-rows:190px minmax(0,1fr); } .history-list-pane,.history-detail { min-height:0; } .history-dialog .dialog-body { max-height:calc(100dvh - 24px); } }
+    @media (max-width:620px) { .topbar { padding:15px; border-radius:14px; } .topbar-actions { gap:7px; } .status-chip { font-size:9px; } .control-deck { padding:8px 16px; border-radius:14px; } .control-cell { padding:14px 0; } .app-footer { padding:12px 14px; border-radius:12px; } .history-dialog { width:calc(100% - 20px); } .history-dialog-header,.history-detail { padding-left:16px; padding-right:16px; } }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-cluster"><div class="brand-mark" aria-hidden="true">记</div><div><h1 class="brand-name">会记</h1><p class="brand-subtitle">Meeting intelligence workspace</p></div></div>
+      <div class="topbar-actions"><div class="status-chip" aria-label="当前工作模式为演示模式"><span class="status-dot demo" aria-hidden="true"></span>本地演示模式</div><button class="secondary-button history-button" data-testid="history-button" id="history-button" type="button" aria-haspopup="dialog">历史纪要 <span class="history-count" id="history-count">0</span></button><button class="icon-button" id="settings-button" type="button" aria-label="查看百炼服务接入说明" title="接入说明"><svg class="inline-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.16 2.16-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.04 1.56v.08h-3.06v-.08a1.7 1.7 0 0 0-1.04-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-2.16-2.16.06-.06A1.7 1.7 0 0 0 6.6 15a1.7 1.7 0 0 0-1.56-1.04h-.08v-3.06h.08A1.7 1.7 0 0 0 6.6 9.86a1.7 1.7 0 0 0-.34-1.88l-.06-.06L8.36 5.76l.06.06a1.7 1.7 0 0 0 1.88.34 1.7 1.7 0 0 0 1.04-1.56v-.08h3.06v.08a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.16 2.16-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.04h.08v3.06h-.08A1.7 1.7 0 0 0 19.4 15Z"></path></svg></button></div>
+    </header>
+    <main class="workspace">
+      <section class="control-deck" aria-label="会议演示控制台">
+        <div class="control-cell"><button class="record-primary" data-testid="record-button" id="record-button" type="button" aria-describedby="record-status"><span class="record-symbol" aria-hidden="true"></span><span id="record-label">开始演示录音</span></button><div class="timer-block"><p class="eyebrow">elapsed</p><output class="timer-value" data-testid="elapsed" id="elapsed">00:00:00</output></div></div>
+        <div class="control-cell"><div class="field-stack"><label class="field-label" for="meeting-topic">会议主题</label><input class="meeting-input" id="meeting-topic" value="Q3 产品评审" autocomplete="off"></div></div>
+        <div class="control-cell"><div class="recording-meta" data-testid="record-status" id="record-status" role="status" aria-live="polite"><span class="pulse-dot" aria-hidden="true"></span><span>演示准备就绪</span></div><div class="compact-actions"><button class="secondary-button" data-testid="new-meeting-button" id="reset-button" type="button">新建会议</button></div></div>
+      </section>
+      <section class="work-grid" aria-label="会议工作区">
+        <article class="panel" aria-labelledby="transcript-heading"><header class="panel-header"><div><div class="panel-title-row"><h2 class="panel-title" id="transcript-heading">实时逐字稿</h2></div><p class="panel-meta" id="transcript-meta">0 字 · 支持直接编辑</p></div><span class="live-label" id="live-label"><span class="status-dot" aria-hidden="true"></span><span>待开始</span></span></header><div class="transcript-wrap"><label class="visually-hidden" for="transcript">可编辑的会议逐字稿</label><textarea class="transcript" id="transcript" spellcheck="false" placeholder="未配置时可播放本地演示；配置百炼后点击“开始真实录音”进行实时转写，也可以直接输入会议内容。"></textarea><p class="transcript-help">未配置时使用离线演示数据；已配置时，音频仅经本机服务转发给百炼 Paraformer。</p></div></article>
+        <article class="panel" aria-labelledby="minutes-heading"><header class="panel-header"><div><div class="panel-title-row"><h2 class="panel-title" id="minutes-heading">会议纪要</h2></div><p class="panel-meta" id="minutes-meta">演示模式 · 尚未生成</p></div><button class="primary-button" data-testid="generate-button" id="generate-button" type="button">生成纪要</button></header><div class="minutes-content"><section class="minutes-section"><h3 class="minutes-heading">会议概览</h3><div class="overview-card" data-testid="minutes-overview" id="minutes-overview">暂无可总结的逐字稿。开始演示录音或输入会议内容后，再生成纪要。</div></section><section class="minutes-section"><h3 class="minutes-heading">关键结论</h3><ol class="simple-list" id="conclusion-list"><li>生成后将在这里列出关键结论。</li></ol></section><section class="minutes-section"><h3 class="minutes-heading">行动项</h3><table class="action-table"><caption class="visually-hidden">会议行动项</caption><thead><tr><th scope="col">事项</th><th scope="col">负责人</th><th scope="col">截止时间</th></tr></thead><tbody id="action-list"><tr><td colspan="3">生成后将在这里列出行动项。</td></tr></tbody></table></section><section class="minutes-section"><h3 class="minutes-heading">待确认问题</h3><ul class="question-list" id="question-list"><li>生成后将在这里列出待确认问题。</li></ul></section></div></article>
+      </section>
+    </main>
+    <footer class="app-footer"><div class="feedback" id="feedback" role="status" aria-live="polite">历史纪要仅保存在此浏览器中，不会上传。</div><div class="footer-actions"><button class="outline-button" data-testid="export-button" id="export-button" type="button"><svg class="inline-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>导出 Markdown</button></div></footer>
+  </div>
+  <dialog id="settings-dialog" aria-labelledby="settings-title"><div class="dialog-body"><h2 class="dialog-title" id="settings-title">本机服务配置</h2><p class="dialog-copy">请自行填写百炼 Base URL 与 API Key。Key 仅发送给当前电脑上的本机服务；页面自身不会将它写入浏览器历史、页面存储或导出文件。</p><div class="connection-form"><div class="dialog-field"><label for="connection-host">百炼 OpenAI-compatible Base URL</label><input class="dialog-input" id="connection-host" type="url" inputmode="url" autocomplete="url" placeholder="https://&lt;workspace&gt;.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"></div><div class="dialog-field"><label for="connection-api-key">API Key</label><input class="dialog-input" id="connection-api-key" type="password" autocomplete="off" spellcheck="false" placeholder="由你在本机填写"></div><div class="dialog-field"><label for="connection-model">Qwen 模型</label><select class="dialog-select" id="connection-model"><option value="qwen-plus">qwen-plus</option><option value="qwen-max">qwen-max</option></select></div><p class="connection-status" id="connection-status" role="status" aria-live="polite">打开后将检查本机配置服务。</p><p class="connection-note">保存后，本机服务会将麦克风 PCM 音频转发给 Paraformer，并用所选 Qwen 模型生成结构化纪要。</p></div><ul class="integration-list"><li><strong>实时转写：</strong>浏览器只连接本机，API Key 由本机服务带入 Paraformer 实时连接。</li><li><strong>结构化纪要：</strong>逐字稿由本机服务调用已配置的 Qwen 模型，页面只接收验证后的结构化结果。</li><li><strong>密钥边界：</strong>状态接口不会回传 API Key；重启本机服务后需要重新填写。</li></ul><div class="dialog-actions"><button class="secondary-button" id="close-dialog-button" type="button">关闭</button><button class="primary-button" id="save-connection-button" type="button">保存本次配置</button></div></div></dialog>
+  <dialog class="draft-restore-dialog" id="draft-restore-dialog" aria-labelledby="draft-restore-title" aria-describedby="draft-restore-copy draft-restore-status"><div class="dialog-body"><h2 class="dialog-title" id="draft-restore-title">恢复上次未归档草稿？</h2><p class="dialog-copy" id="draft-restore-copy">发现一份仅保存在当前浏览器的主题和逐字稿。恢复后需要重新生成会议纪要，录音不会自动继续。</p><p class="draft-restore-status" id="draft-restore-status" role="status" aria-live="polite" aria-atomic="true"></p><div class="dialog-actions"><button class="primary-button" id="restore-draft-button" type="button" autofocus>恢复上次草稿</button><button class="secondary-button" id="discard-recovered-draft-button" type="button">丢弃草稿</button></div></div></dialog>
+  <dialog class="discard-draft-dialog" id="discard-draft-dialog" aria-labelledby="discard-draft-title" aria-describedby="discard-draft-copy"><div class="dialog-body"><h2 class="dialog-title" id="discard-draft-title">放弃当前会议？</h2><p class="dialog-copy" id="discard-draft-copy">当前逐字稿、录音或纪要尚未归档。选择“丢弃并新建”后，这些内容无法恢复。</p><div class="dialog-actions"><button class="secondary-button" id="continue-editing-button" type="button" autofocus>继续编辑</button><button class="danger-button" id="discard-draft-button" type="button">丢弃并新建</button></div></div></dialog>
+  <dialog class="history-dialog" id="history-dialog" aria-labelledby="history-title"><div class="dialog-body"><header class="history-dialog-header"><div><h2 class="dialog-title" id="history-title">历史会议纪要</h2><p class="dialog-copy" id="history-local-note">仅保存在当前浏览器，可查看历史逐字稿和纪要。</p></div><button class="secondary-button" id="close-history-dialog-button" type="button">关闭</button></header><div class="history-dialog-content"><section class="history-list-pane" aria-label="历史会议列表"><p class="history-list-label" id="history-list-label">本地历史</p><label class="visually-hidden" for="history-filter">搜索本地历史会议</label><input class="history-filter" data-testid="history-filter" id="history-filter" type="search" autocomplete="off" placeholder="搜索主题或逐字稿" aria-controls="history-list"><ul class="history-list" data-testid="history-list" id="history-list"></ul></section><section class="history-detail" aria-live="polite"><h3 class="history-detail-topic" id="history-topic">请选择一条历史会议</h3><p class="history-detail-time"><time id="history-saved-at"></time></p><button class="outline-button history-export-button" data-testid="history-export-button" id="history-export-button" type="button" disabled>导出此纪要</button><p class="history-export-status" id="history-export-status" role="status" aria-live="polite" aria-atomic="true"></p><section class="minutes-section"><h4 class="minutes-heading">历史逐字稿</h4><label class="visually-hidden" for="history-transcript">历史会议逐字稿</label><textarea class="history-transcript" id="history-transcript" readonly></textarea></section><section class="minutes-section"><h4 class="minutes-heading">会议概览</h4><div class="overview-card" id="history-overview">请选择一条历史会议查看纪要。</div></section><section class="minutes-section"><h4 class="minutes-heading">关键结论</h4><ol class="simple-list" id="history-conclusions"></ol></section><section class="minutes-section"><h4 class="minutes-heading">行动项</h4><table class="action-table"><caption class="visually-hidden">历史会议行动项</caption><thead><tr><th scope="col">事项</th><th scope="col">负责人</th><th scope="col">截止时间</th></tr></thead><tbody id="history-actions"></tbody></table></section><section class="minutes-section"><h4 class="minutes-heading">待确认问题</h4><ul class="question-list" id="history-questions"></ul></section></section></div></div></dialog>
+  <script>
+    (() => {
+      const DEFAULT_TOPIC = '产品评审';
+      const HISTORY_STORAGE_KEY = 'meeting-demo.history.v1';
+      const DRAFT_STORAGE_KEY = 'meeting-demo.draft.v1';
+      const HISTORY_LIMIT = 20;
+      const DRAFT_SAVE_DELAY = 300;
+      const DRAFT_MAX_ID_LENGTH = 160;
+      const DRAFT_MAX_TOPIC_LENGTH = 300;
+      const DRAFT_MAX_TRANSCRIPT_LENGTH = 200000;
+      const DEFAULT_CONNECTION_MODEL = 'qwen-plus';
+      const DEMO_SEGMENTS = [
+        '我们先看一下本季度新用户的激活情况。上周数据显示，首次使用引导完成率提升到了 68%，但第二天留存仍然低于预期。',
+        '产品团队判断，问题主要集中在模板选择和首次导入两个步骤。用户在没有示例数据的情况下，很难理解最终会得到什么结果。',
+        '我们建议下个版本增加一个可跳过的示例工作区，同时把导入流程拆成两步。设计稿周三之前可以出第一版。',
+        '增长团队会再确认一次新老用户的分组方式，并在下次评审前把结论补充到数据看板中。',
+      ];
+      function cleanText(value) { return String(value ?? '').replace(/\s+/g, ' ').trim(); }
+      function normalizeConnectionHost(value) {
+        const source = String(value ?? '').trim();
+        if (!source) return null;
+        try {
+          const url = new URL(source);
+          const hostname = url.hostname.toLowerCase();
+          const isModelStudioHost = hostname === 'dashscope.aliyuncs.com' || hostname.endsWith('.cn-beijing.maas.aliyuncs.com');
+          const path = url.pathname.replace(/\/+$/, '') || '/';
+          if (url.protocol !== 'https:' || !isModelStudioHost || url.port || url.username || url.password || url.search || url.hash || path !== '/compatible-mode/v1') return null;
+          return `${url.origin}/compatible-mode/v1`;
+        } catch {
+          return null;
+        }
+      }
+      function preview(text) { return text.length > 96 ? `${text.slice(0, 96)}…` : text; }
+      function formatElapsed(seconds) { const safeSeconds = Math.max(0, Math.floor(Number(seconds) || 0)); const hours = Math.floor(safeSeconds / 3600); const minutes = Math.floor((safeSeconds % 3600) / 60); const remainder = safeSeconds % 60; return [hours, minutes, remainder].map((part) => String(part).padStart(2, '0')).join(':'); }
+      function splitSentences(text) { return (cleanText(text).match(/[^。！？!?]+[。！？!?]?/g) || []).map(cleanText).filter(Boolean); }
+      function createMinutes(transcript, topic = DEFAULT_TOPIC) {
+        const text = cleanText(transcript); const meetingTopic = cleanText(topic) || DEFAULT_TOPIC;
+        if (!text) return { overview: '暂无可总结的逐字稿。开始演示录音或输入会议内容后，再生成纪要。', conclusions: [], actions: [], questions: [] };
+        const sentences = splitSentences(text);
+        const actionPattern = /需要|请|应|将在|安排|负责|交付|完成|退还|取消|确认|跟进|输出|更新|设计|决定/;
+        const actions = sentences.filter((sentence) => actionPattern.test(sentence)).slice(0, 3).map((task) => ({ task, owner: '待确认', due: '待确认' }));
+        const questions = sentences.filter((sentence) => /[？?]$/.test(sentence));
+        return { overview: `${meetingTopic}已记录：${preview(text)}`, conclusions: sentences.slice(0, 3), actions, questions: questions.length ? questions : ['请确认以上结论对应的负责人和截止时间。'] };
+      }
+      function normalizeMinutes(minutes) {
+        if (!minutes || typeof minutes !== 'object' || Array.isArray(minutes)) return null;
+        const overview = typeof minutes.overview === 'string' ? minutes.overview : '';
+        const conclusions = Array.isArray(minutes.conclusions) ? minutes.conclusions.filter((item) => typeof item === 'string') : [];
+        const actions = Array.isArray(minutes.actions) ? minutes.actions.filter((item) => item && typeof item === 'object' && typeof item.task === 'string' && typeof item.owner === 'string' && typeof item.due === 'string').map((item) => ({ task: item.task, owner: item.owner, due: item.due })) : [];
+        const questions = Array.isArray(minutes.questions) ? minutes.questions.filter((item) => typeof item === 'string') : [];
+        return { overview, conclusions, actions, questions };
+      }
+      function normalizeHistoryRecord(record) {
+        if (!record || typeof record !== 'object' || Array.isArray(record) || typeof record.id !== 'string' || !record.id || typeof record.topic !== 'string' || typeof record.savedAt !== 'string' || Number.isNaN(Date.parse(record.savedAt)) || typeof record.transcript !== 'string') return null;
+        const minutes = normalizeMinutes(record.minutes); if (!minutes) return null;
+        return { id: record.id, topic: record.topic, savedAt: record.savedAt, transcript: record.transcript, minutes };
+      }
+      function normalizeHistory(records) {
+        const newestById = new Map();
+        (Array.isArray(records) ? records : []).map(normalizeHistoryRecord).filter(Boolean).forEach((record) => {
+          const existing = newestById.get(record.id);
+          if (!existing || Date.parse(record.savedAt) >= Date.parse(existing.savedAt)) newestById.set(record.id, record);
+        });
+        return [...newestById.values()].sort((left, right) => Date.parse(right.savedAt) - Date.parse(left.savedAt)).slice(0, HISTORY_LIMIT);
+      }
+      function upsertHistory(records, record, limit = HISTORY_LIMIT) {
+        const normalizedRecord = normalizeHistoryRecord(record); const safeLimit = Math.max(1, Math.floor(Number(limit) || HISTORY_LIMIT));
+        const withoutCurrent = normalizeHistory(records).filter((item) => item.id !== normalizedRecord?.id);
+        return normalizeHistory(normalizedRecord ? [...withoutCurrent, normalizedRecord] : withoutCurrent).slice(0, safeLimit);
+      }
+      function toMarkdown({ topic = DEFAULT_TOPIC, transcript = '', minutes = createMinutes(transcript, topic) }) {
+        const lines = [`# ${cleanText(topic) || DEFAULT_TOPIC} · 会议纪要`, '', '## 会议概览', minutes.overview || '暂无会议概览。', '', '## 关键结论', ...(minutes.conclusions?.length ? minutes.conclusions.map((item) => `- ${item}`) : ['- 暂无关键结论。']), '', '## 行动项', ...(minutes.actions?.length ? minutes.actions.map((item) => `- [ ] ${item.task}（负责人：${item.owner}；截止：${item.due}）`) : ['- 暂无行动项。']), '', '## 待确认问题', ...(minutes.questions?.length ? minutes.questions.map((item) => `- ${item}`) : ['- 暂无待确认问题。']), '', '## 原始逐字稿', cleanText(transcript) || '暂无逐字稿。', ''];
+        return lines.join('\n');
+      }
+      function createMeetingId() { return globalThis.crypto?.randomUUID?.() || `meeting-${Date.now()}-${Math.random().toString(16).slice(2)}`; }
+      function createSeedHistory() {
+        return normalizeHistory([
+          { id: 'seed-product-review', topic: '新用户激活评审', savedAt: '2026-11-08T09:30:00.000Z', transcript: '产品团队确认首次使用引导完成率有所提升。\n\n需要补充示例工作区并确认新老用户分组口径。', minutes: { overview: '团队确认优化首次使用引导，并补充示例工作区。', conclusions: ['首次引导完成率提升，次日留存仍需观察。', '示例工作区将降低首次导入门槛。'], actions: [{ task: '输出示例工作区设计稿', owner: '待确认', due: '待确认' }], questions: ['次日留存目标基线是否仍为 42%？'] } },
+          { id: 'seed-sprint-planning', topic: '第 32 周迭代规划', savedAt: '2026-11-06T13:00:00.000Z', transcript: '本周优先完成导入流程拆分。\n研发与设计需要在周三前同步可行性。', minutes: { overview: '第 32 周以导入流程拆分和方案评审为核心。', conclusions: ['优先落地拆分后的导入路径。'], actions: [{ task: '同步研发与设计方案', owner: '待确认', due: '周三' }], questions: ['是否需要安排额外的可用性测试？'] } },
+        ]);
+      }
+      function readPersistedHistory() {
+        try {
+          const stored = localStorage.getItem(HISTORY_STORAGE_KEY);
+          if (stored === null) return { records: [], missing: true };
+          const parsed = JSON.parse(stored); if (!Array.isArray(parsed)) return null;
+          return { records: normalizeHistory(parsed), missing: false };
+        } catch (error) { return null; }
+      }
+      function loadHistoryFromStorage() {
+        const fallback = createSeedHistory(); const snapshot = readPersistedHistory();
+        if (!snapshot) return { records: fallback, persists: false };
+        if (!snapshot.missing) return { records: snapshot.records, persists: true };
+        try { localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(fallback)); return { records: fallback, persists: true }; }
+        catch (error) { return { records: fallback, persists: false }; }
+      }
+      function normalizeDraftSnapshot(snapshot) {
+        if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot) || typeof snapshot.meetingId !== 'string' || typeof snapshot.topic !== 'string' || typeof snapshot.transcript !== 'string' || typeof snapshot.savedAt !== 'string') return null;
+        const timestamp = Date.parse(snapshot.savedAt);
+        if (!cleanText(snapshot.meetingId) || snapshot.meetingId.length > DRAFT_MAX_ID_LENGTH || snapshot.topic.length > DRAFT_MAX_TOPIC_LENGTH || snapshot.transcript.length > DRAFT_MAX_TRANSCRIPT_LENGTH || !Number.isFinite(timestamp) || new Date(timestamp).toISOString() !== snapshot.savedAt) return null;
+        if (!cleanText(snapshot.topic) && !cleanText(snapshot.transcript)) return null;
+        return { meetingId:snapshot.meetingId, topic:snapshot.topic, transcript:snapshot.transcript, savedAt:snapshot.savedAt };
+      }
+      function readPersistedDraft() {
+        try {
+          const stored = localStorage.getItem(DRAFT_STORAGE_KEY);
+          if (stored === null) return { draft:null, missing:true };
+          const draft = normalizeDraftSnapshot(JSON.parse(stored));
+          return draft ? { draft, missing:false } : null;
+        } catch (error) { return null; }
+      }
+      function clearPersistedDraft(meetingId) {
+        const snapshot = readPersistedDraft();
+        if (!snapshot) return 'failed';
+        if (snapshot.missing) return 'missing';
+        if (snapshot.draft.meetingId !== meetingId) return 'foreign';
+        try { localStorage.removeItem(DRAFT_STORAGE_KEY); return 'removed'; }
+        catch (error) { return 'failed'; }
+      }
+      function loadPendingDraft(history) {
+        const snapshot = readPersistedDraft();
+        if (!snapshot?.draft) return null;
+        if (history.some((record) => record.id === snapshot.draft.meetingId && record.topic === snapshot.draft.topic && record.transcript === snapshot.draft.transcript)) { clearPersistedDraft(snapshot.draft.meetingId); return null; }
+        return snapshot.draft;
+      }
+      const api = { formatElapsed, createMinutes, toMarkdown, normalizeHistory, upsertHistory, normalizeConnectionHost }; window.MeetingDemo = api;
+      if (typeof document === 'undefined') return;
+      const elements = { recordButton:document.querySelector('#record-button'), recordLabel:document.querySelector('#record-label'), recordStatus:document.querySelector('#record-status'), elapsed:document.querySelector('#elapsed'), resetButton:document.querySelector('#reset-button'), topic:document.querySelector('#meeting-topic'), transcript:document.querySelector('#transcript'), transcriptMeta:document.querySelector('#transcript-meta'), liveLabel:document.querySelector('#live-label'), minutesMeta:document.querySelector('#minutes-meta'), generateButton:document.querySelector('#generate-button'), overview:document.querySelector('#minutes-overview'), conclusions:document.querySelector('#conclusion-list'), actions:document.querySelector('#action-list'), questions:document.querySelector('#question-list'), exportButton:document.querySelector('#export-button'), feedback:document.querySelector('#feedback'), settingsButton:document.querySelector('#settings-button'), settingsDialog:document.querySelector('#settings-dialog'), closeDialogButton:document.querySelector('#close-dialog-button'), draftRestoreDialog:document.querySelector('#draft-restore-dialog'), draftRestoreStatus:document.querySelector('#draft-restore-status'), restoreDraftButton:document.querySelector('#restore-draft-button'), discardRecoveredDraftButton:document.querySelector('#discard-recovered-draft-button'), discardDraftDialog:document.querySelector('#discard-draft-dialog'), continueEditingButton:document.querySelector('#continue-editing-button'), discardDraftButton:document.querySelector('#discard-draft-button'), historyButton:document.querySelector('#history-button'), historyCount:document.querySelector('#history-count'), historyDialog:document.querySelector('#history-dialog'), closeHistoryDialogButton:document.querySelector('#close-history-dialog-button'), historyFilter:document.querySelector('#history-filter'), historyListLabel:document.querySelector('#history-list-label'), historyList:document.querySelector('#history-list'), historyExportButton:document.querySelector('#history-export-button'), historyExportStatus:document.querySelector('#history-export-status'), historyTopic:document.querySelector('#history-topic'), historySavedAt:document.querySelector('#history-saved-at'), historyTranscript:document.querySelector('#history-transcript'), historyOverview:document.querySelector('#history-overview'), historyConclusions:document.querySelector('#history-conclusions'), historyActions:document.querySelector('#history-actions'), historyQuestions:document.querySelector('#history-questions') };
+      Object.assign(elements, { connectionHost:document.querySelector('#connection-host'), connectionApiKey:document.querySelector('#connection-api-key'), connectionModel:document.querySelector('#connection-model'), connectionStatus:document.querySelector('#connection-status'), saveConnectionButton:document.querySelector('#save-connection-button') });
+      const initialHistory = loadHistoryFromStorage();
+      const initialDraft = loadPendingDraft(initialHistory.records);
+      const state = { recording:false, recordingMode:'demo', liveFinishing:false, liveStarting:false, live:null, liveSessionId:0, elapsedSeconds:0, segmentIndex:0, timerId:null, minutes:createMinutes('', elements.topic.value), minutesAreStale:false, minutesSource:'demo', generating:false, activeGeneration:null, draftRevision:0, draftDirty:false, draftNeedsRecovery:false, draftPersistenceTimer:null, draftPersists:true, pendingDraftRestore:initialDraft, currentMeetingId:createMeetingId(), history:initialHistory.records, pendingHistory:[], historyQuery:'', selectedHistoryId:initialHistory.records[0]?.id ?? null, historyPersists:initialHistory.persists };
+      state.connection = { configured:false, host:'', model:DEFAULT_CONNECTION_MODEL, asrEndpoint:'', serverAvailable:false };
+      function countCharacters(text) { return [...cleanText(text)].length; }
+      function setFeedback(message, kind = 'default') { elements.feedback.textContent = message; elements.feedback.className = `feedback${kind === 'default' ? '' : ` is-${kind}`}`; }
+      function setDraftRestoreStatus(message = '', kind = 'default') { elements.draftRestoreStatus.textContent = message; elements.draftRestoreStatus.className = `draft-restore-status${kind === 'default' ? '' : ` is-${kind}`}`; }
+      function clearDraftPersistenceTimer() { if (state.draftPersistenceTimer !== null) { window.clearTimeout(state.draftPersistenceTimer); state.draftPersistenceTimer = null; } }
+      function currentDraftSnapshot() {
+        const topic = elements.topic.value; const transcript = elements.transcript.value;
+        if (!cleanText(topic) && !cleanText(transcript)) return { kind:'empty', snapshot:null };
+        const snapshot = normalizeDraftSnapshot({ meetingId:state.currentMeetingId, topic, transcript, savedAt:new Date().toISOString() });
+        return snapshot ? { kind:'valid', snapshot } : { kind:'invalid', snapshot:null };
+      }
+      function flushDraftPersistence() {
+        clearDraftPersistenceTimer();
+        if (state.pendingDraftRestore) return true;
+        if (!state.draftNeedsRecovery) { clearPersistedDraft(state.currentMeetingId); return true; }
+        const candidate = currentDraftSnapshot();
+        if (candidate.kind === 'empty') { clearPersistedDraft(state.currentMeetingId); return true; }
+        if (candidate.kind === 'invalid') { if (state.draftPersists) setFeedback('当前草稿超过本机恢复上限，已保留上一份可恢复版本。', 'warning'); state.draftPersists = false; return false; }
+        try { localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(candidate.snapshot)); state.draftPersists = true; return true; }
+        catch (error) { if (state.draftPersists) setFeedback('当前草稿无法写入浏览器；刷新后可能丢失。', 'warning'); state.draftPersists = false; return false; }
+      }
+      function scheduleDraftPersistence() {
+        clearDraftPersistenceTimer();
+        if (!state.draftNeedsRecovery || state.pendingDraftRestore) return;
+        state.draftPersistenceTimer = window.setTimeout(() => { state.draftPersistenceTimer = null; flushDraftPersistence(); }, DRAFT_SAVE_DELAY);
+      }
+      function markDraftForRecovery() { state.draftDirty = true; state.draftNeedsRecovery = true; scheduleDraftPersistence(); }
+      function restorePendingDraft() {
+        const draft = state.pendingDraftRestore; if (!draft) return;
+        state.pendingDraftRestore = null; state.currentMeetingId = draft.meetingId; state.draftRevision += 1; state.draftDirty = true; state.draftNeedsRecovery = true; elements.topic.value = draft.topic; elements.transcript.value = draft.transcript; state.minutes = createMinutes('', draft.topic); state.minutesSource = 'demo'; state.minutesAreStale = Boolean(cleanText(draft.transcript)); setDraftRestoreStatus(); elements.draftRestoreDialog.close(); renderRecording(); renderTranscriptMeta(); renderMinutes(); scheduleDraftPersistence(); setFeedback('已恢复上次未归档草稿；请在确认逐字稿后重新生成纪要。'); window.setTimeout(() => elements.transcript.focus(), 0);
+      }
+      function discardPendingDraft() {
+        const draft = state.pendingDraftRestore; const outcome = draft ? clearPersistedDraft(draft.meetingId) : 'missing';
+        if (outcome === 'failed') { setDraftRestoreStatus('无法删除本机未归档草稿；它仍可能保存在当前浏览器。请重试或恢复草稿。', 'warning'); elements.discardRecoveredDraftButton.focus(); return; }
+        state.pendingDraftRestore = null; setDraftRestoreStatus(); elements.draftRestoreDialog.close();
+        if (outcome === 'foreign') setFeedback('恢复提示对应的草稿已被另一标签页替换；未改动那份草稿。', 'warning');
+        else if (outcome === 'missing') setFeedback('本机未归档草稿已经不存在，已关闭恢复提示。');
+        else setFeedback('已丢弃本机未归档草稿。');
+        window.setTimeout(() => elements.transcript.focus(), 0);
+      }
+      function setConnectionStatus(message, kind = 'default') { elements.connectionStatus.textContent = message; elements.connectionStatus.className = 'connection-status' + (kind === 'default' ? '' : ' is-' + kind); }
+      function applyConnectionStatus(status) {
+        const host = normalizeConnectionHost(status?.host) || '';
+        const model = cleanText(status?.model) || DEFAULT_CONNECTION_MODEL;
+        const asrEndpoint = cleanText(status?.asrEndpoint);
+        const configured = Boolean(status?.configured && host && asrEndpoint); const connectionChanged = configured && (!state.connection.configured || state.connection.host !== host || state.connection.model !== model);
+        state.connection = { configured, host, model, asrEndpoint, serverAvailable:true };
+        if (connectionChanged && cleanText(elements.transcript.value)) { state.draftRevision += 1; state.minutesAreStale = true; }
+        if (host) elements.connectionHost.value = host;
+        if ([...elements.connectionModel.options].some((option) => option.value === model)) elements.connectionModel.value = model;
+        setConnectionStatus(state.connection.configured ? '本机服务已配置。API Key 不会回传到页面。' : '本机配置服务已就绪，等待本次配置。', state.connection.configured ? 'success' : 'default');
+        renderRecording();
+      }
+      async function refreshConnectionStatus() {
+        try {
+          const response = await fetch('/api/status', { cache:'no-store' });
+          if (!response.ok) throw new Error('本机服务未响应。');
+          applyConnectionStatus(await response.json());
+        } catch {
+          state.connection = { configured:false, host:'', model:DEFAULT_CONNECTION_MODEL, asrEndpoint:'', serverAvailable:false };
+          setConnectionStatus('未检测到本机配置服务。请通过 node server.mjs --port 4173 打开页面。', 'warning');
+          renderRecording();
+        }
+      }
+      async function saveConnection() {
+        const host = normalizeConnectionHost(elements.connectionHost.value);
+        const apiKey = elements.connectionApiKey.value.trim();
+        const model = cleanText(elements.connectionModel.value) || DEFAULT_CONNECTION_MODEL;
+        if (!host) { setConnectionStatus('Base URL 必须是官方百炼 OpenAI-compatible HTTPS 地址。', 'warning'); return; }
+        if (!apiKey) { setConnectionStatus('请先填写 API Key。', 'warning'); return; }
+        elements.saveConnectionButton.disabled = true;
+        try {
+          const response = await fetch('/api/config', { method:'POST', headers:{ 'content-type':'application/json' }, body:JSON.stringify({ host, apiKey, model }) });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(result.message || '本机服务无法保存配置。');
+          applyConnectionStatus(result);
+          elements.connectionApiKey.value = '';
+          setConnectionStatus('已保存本次配置。API Key 只保留在本机服务内存中。', 'success');
+          setFeedback('已保存本次配置；页面不会保存 API Key。');
+        } catch (error) {
+          setConnectionStatus(error instanceof Error ? error.message : '本机服务无法保存配置。', 'warning');
+        } finally {
+          elements.saveConnectionButton.disabled = false;
+        }
+      }
+      function renderRecording() {
+        const useLiveService = state.connection.configured && state.connection.serverAvailable;
+        const isLive = state.recordingMode === 'live';
+        elements.recordButton.classList.toggle('is-recording', state.recording); elements.recordButton.disabled = state.liveFinishing || state.liveStarting;
+        elements.recordLabel.textContent = state.liveStarting ? '正在连接真实录音' : state.liveFinishing ? '正在完成转写' : state.recording ? (isLive ? '停止真实录音' : '停止演示录音') : useLiveService ? '开始真实录音' : '开始演示录音'; elements.elapsed.textContent = formatElapsed(state.elapsedSeconds); elements.recordStatus.classList.toggle('is-recording', state.recording);
+        elements.recordStatus.querySelector('span:last-child').textContent = state.liveStarting ? '正在请求麦克风并连接 Paraformer' : state.liveFinishing ? '真实录音已停止 · 正在完成转写' : state.recording ? (isLive ? '真实录音中 · Paraformer 正在转写' : '演示录音中 · 正在追加本地片段') : state.elapsedSeconds > 0 ? (isLive ? '真实录音已暂停' : '演示录音已暂停') : useLiveService ? '百炼已配置 · 等待真实录音' : '演示准备就绪';
+        elements.liveLabel.classList.toggle('is-recording', state.recording); elements.liveLabel.querySelector('span:last-child').textContent = state.liveStarting ? '连接中' : state.liveFinishing ? '正在收尾' : state.recording ? (isLive ? '百炼转写中' : '演示转写中') : state.elapsedSeconds > 0 ? '已暂停' : '待开始';
+        elements.historyButton.disabled = state.recording || state.liveFinishing || state.liveStarting;
+      }
+      function renderTranscriptMeta() { elements.transcriptMeta.textContent = `${countCharacters(elements.transcript.value)} 字 · 支持直接编辑`; }
+      function listItems(container, items, renderItem, emptyText) { container.replaceChildren(); if (!items.length) { const item = document.createElement('li'); item.textContent = emptyText; container.append(item); return; } items.forEach((value) => container.append(renderItem(value))); }
+      function renderActions(container, actions) {
+        container.replaceChildren();
+        if (!actions.length) { const row = document.createElement('tr'); const cell = document.createElement('td'); cell.colSpan = 3; cell.textContent = '暂无行动项。'; row.append(cell); container.append(row); return; }
+        actions.forEach((action) => { const row = document.createElement('tr'); [action.task, action.owner, action.due].forEach((value) => { const cell = document.createElement('td'); cell.textContent = value; row.append(cell); }); container.append(row); });
+      }
+      function renderMinutes() {
+        const { minutes } = state; elements.overview.textContent = minutes.overview; elements.generateButton.disabled = state.generating; elements.generateButton.textContent = state.generating ? '生成中…' : '生成纪要'; elements.minutesMeta.textContent = state.generating ? '千问正在整理当前逐字稿' : state.minutesAreStale ? '逐字稿已修改 · 等待重新生成' : cleanText(elements.transcript.value) ? (state.minutesSource === 'qwen' ? '千问生成 · 已根据当前逐字稿整理' : '演示模式 · 已根据当前逐字稿生成') : '演示模式 · 尚未生成';
+        listItems(elements.conclusions, minutes.conclusions, (text) => { const item = document.createElement('li'); item.textContent = text; return item; }, '暂无关键结论。');
+        renderActions(elements.actions, minutes.actions);
+        listItems(elements.questions, minutes.questions, (text) => { const item = document.createElement('li'); item.textContent = text; return item; }, '暂无待确认问题。');
+      }
+      function formatSavedAt(savedAt) { return new Intl.DateTimeFormat('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(savedAt)); }
+      function visibleHistoryRecords() { const query = cleanText(state.historyQuery).toLocaleLowerCase(); return query ? state.history.filter((record) => `${cleanText(record.topic) || DEFAULT_TOPIC}\n${cleanText(record.transcript)}`.toLocaleLowerCase().includes(query)) : state.history; }
+      function selectedHistoryRecord(records = state.history) { return records.find((record) => record.id === state.selectedHistoryId) || records[0] || null; }
+      function setHistoryExportStatus(message = '', tone = 'default') { elements.historyExportStatus.textContent = message; elements.historyExportStatus.classList.toggle('is-warning', tone === 'warning'); }
+      function renderHistory() {
+        const query = cleanText(state.historyQuery); const visibleHistory = visibleHistoryRecords(); const selected = selectedHistoryRecord(visibleHistory); if (selected && !query) state.selectedHistoryId = selected.id;
+        setHistoryExportStatus();
+        elements.historyExportButton.disabled = !selected;
+        elements.historyCount.textContent = String(state.history.length);
+        elements.historyButton.setAttribute('aria-label', `打开历史纪要，共 ${state.history.length} 条`);
+        elements.historyListLabel.textContent = query ? `本地历史 · 匹配 ${visibleHistory.length} / ${state.history.length}` : `本地历史 · ${state.history.length} 条`;
+        elements.historyList.replaceChildren();
+        if (!state.history.length || !visibleHistory.length) { const empty = document.createElement('li'); empty.className = 'history-empty'; empty.textContent = state.history.length ? '未找到匹配的本地历史会议。' : '还没有历史会议。生成一份非空纪要后会自动保存到这里。'; elements.historyList.append(empty); }
+        visibleHistory.forEach((record) => {
+          const item = document.createElement('li'); const button = document.createElement('button'); const topic = document.createElement('span'); const time = document.createElement('time');
+          button.type = 'button'; button.className = 'history-record'; button.dataset.historyId = record.id; button.setAttribute('aria-current', String(record.id === selected?.id));
+          topic.className = 'history-record-topic'; topic.textContent = `${record.id.startsWith('seed-') ? '演示 · ' : ''}${cleanText(record.topic) || DEFAULT_TOPIC}`; time.dateTime = record.savedAt; time.textContent = formatSavedAt(record.savedAt);
+          button.append(topic, time); button.addEventListener('click', () => { state.selectedHistoryId = record.id; renderHistory(); }); item.append(button); elements.historyList.append(item);
+        });
+        if (!selected) { const noMatch = Boolean(query && state.history.length); elements.historyTopic.textContent = noMatch ? '未找到匹配的本地历史会议。' : '请选择一条历史会议'; elements.historySavedAt.textContent = ''; elements.historySavedAt.removeAttribute('datetime'); elements.historyTranscript.value = ''; elements.historyOverview.textContent = noMatch ? '请调整搜索词后再试。' : '请选择一条历史会议查看纪要。'; listItems(elements.historyConclusions, [], (text) => text, '暂无关键结论。'); renderActions(elements.historyActions, []); listItems(elements.historyQuestions, [], (text) => text, '暂无待确认问题。'); return; }
+        elements.historyTopic.textContent = cleanText(selected.topic) || DEFAULT_TOPIC; elements.historySavedAt.dateTime = selected.savedAt; elements.historySavedAt.textContent = `保存于 ${formatSavedAt(selected.savedAt)}`; elements.historyTranscript.value = selected.transcript; elements.historyOverview.textContent = selected.minutes.overview;
+        listItems(elements.historyConclusions, selected.minutes.conclusions, (text) => { const item = document.createElement('li'); item.textContent = text; return item; }, '暂无关键结论。'); renderActions(elements.historyActions, selected.minutes.actions); listItems(elements.historyQuestions, selected.minutes.questions, (text) => { const item = document.createElement('li'); item.textContent = text; return item; }, '暂无待确认问题。');
+      }
+      function persistHistory() {
+        try { localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(state.history)); state.pendingHistory = []; state.historyPersists = true; return true; }
+        catch (error) { state.historyPersists = false; return false; }
+      }
+      function reconcileHistoryFromStorage() {
+        const snapshot = readPersistedHistory();
+        if (!snapshot) return false;
+        state.history = normalizeHistory([...snapshot.records, ...state.pendingHistory]); state.historyPersists = true; renderHistory(); return true;
+      }
+      function archiveCurrentMeeting() {
+        if (!cleanText(elements.transcript.value)) return false;
+        const record = { id: state.currentMeetingId, topic: cleanText(elements.topic.value) || DEFAULT_TOPIC, savedAt: new Date().toISOString(), transcript: elements.transcript.value, minutes: normalizeMinutes(state.minutes) };
+        const snapshot = readPersistedHistory(); const baseHistory = snapshot ? [...snapshot.records, ...state.pendingHistory] : state.history;
+        state.history = upsertHistory(baseHistory, record); state.selectedHistoryId = record.id; const persisted = persistHistory(); if (!persisted) state.pendingHistory = upsertHistory(state.pendingHistory, record); state.draftDirty = !persisted; state.draftNeedsRecovery = !persisted; if (persisted) clearPersistedDraft(state.currentMeetingId); else flushDraftPersistence(); renderHistory(); return persisted;
+      }
+      function appendNextSegment() {
+        const next = DEMO_SEGMENTS[state.segmentIndex]; if (!next) { stopDemo('演示素材已全部追加。你可以编辑逐字稿或生成纪要。'); return; }
+        const timestamp = formatElapsed(state.elapsedSeconds).slice(3); elements.transcript.value = `${elements.transcript.value.trim()}${elements.transcript.value.trim() ? '\n\n' : ''}[${timestamp}] ${next}`; state.segmentIndex += 1; state.draftRevision += 1; markDraftForRecovery(); state.minutesAreStale = true; state.minutesSource = 'demo'; renderTranscriptMeta(); renderMinutes();
+        if (state.segmentIndex >= DEMO_SEGMENTS.length) stopDemo('演示素材已全部追加。你可以编辑逐字稿或生成纪要。');
+      }
+      function tickDemo() { if (!state.recording || state.recordingMode !== 'demo') return; state.elapsedSeconds += 1; if (state.elapsedSeconds === 1 || state.elapsedSeconds % 4 === 1) appendNextSegment(); renderRecording(); }
+      function startDemo() {
+        if (state.recording) return;
+        if (state.segmentIndex >= DEMO_SEGMENTS.length) { setFeedback('演示素材已结束，点击“新建会议”可重新播放。', 'warning'); renderRecording(); return; }
+        if (state.timerId !== null) window.clearInterval(state.timerId);
+        state.recordingMode = 'demo'; state.liveFinishing = false; state.recording = true; renderRecording(); setFeedback('演示录音已开始：逐字稿将以本地预置片段的形式逐步出现。'); state.timerId = window.setInterval(tickDemo, 1000); tickDemo();
+      }
+      function stopDemo(message = '演示录音已暂停。逐字稿可以继续编辑，或立即生成纪要。') { if (state.recordingMode !== 'demo' || (!state.recording && state.timerId === null)) return; state.recording = false; window.clearInterval(state.timerId); state.timerId = null; renderRecording(); setFeedback(message); }
+      function pcm16Buffer(samples, inputRate, outputRate = 16000) {
+        const ratio = inputRate / outputRate; const length = Math.max(1, Math.floor(samples.length / ratio)); const output = new Int16Array(length);
+        for (let index = 0; index < length; index += 1) { const start = Math.floor(index * ratio); const end = Math.min(samples.length, Math.max(start + 1, Math.floor((index + 1) * ratio))); let total = 0; for (let cursor = start; cursor < end; cursor += 1) total += samples[cursor]; const sample = Math.max(-1, Math.min(1, total / (end - start))); output[index] = sample < 0 ? sample * 0x8000 : sample * 0x7fff; }
+        return output.buffer;
+      }
+      function releaseLiveCapture(live) {
+        if (!live) return;
+        try { live.processor && (live.processor.onaudioprocess = null); live.processor?.disconnect(); live.source?.disconnect(); live.silence?.disconnect(); live.stream?.getTracks().forEach((track) => track.stop()); if (live.context?.state !== 'closed') void live.context.close().catch(() => {}); } catch {}
+      }
+      function isCurrentLiveSession(live) { return Boolean(live && state.live === live && !live.cancelled && !live.finished); }
+      function finishLiveSession(live, message, kind = 'default') {
+        if (!live || state.live !== live) { releaseLiveCapture(live); return; }
+        live.finished = true; window.clearInterval(state.timerId); state.timerId = null; state.recording = false; state.liveStarting = false; state.liveFinishing = false; releaseLiveCapture(live); if (live.socket?.readyState === WebSocket.OPEN || live.socket?.readyState === WebSocket.CONNECTING) live.socket.close(); state.live = null; state.recordingMode = 'live'; renderRecording(); setFeedback(message, kind);
+      }
+      function requestLiveFinish(live) {
+        if (!isCurrentLiveSession(live) || live.finishSent) return;
+        if (!live.ready || live.socket?.readyState !== WebSocket.OPEN) { live.pendingFinish = true; return; }
+        live.finishSent = true; live.socket.send(JSON.stringify({ action:'finish' }));
+      }
+      function appendLiveTranscript(text) {
+        const timestamp = formatElapsed(state.elapsedSeconds).slice(3); elements.transcript.value = `${elements.transcript.value.trim()}${elements.transcript.value.trim() ? '\n\n' : ''}[${timestamp}] ${cleanText(text)}`; state.draftRevision += 1; markDraftForRecovery(); state.minutesAreStale = true; renderTranscriptMeta(); renderMinutes();
+      }
+      function handleLiveEvent(live, event) {
+        if (!isCurrentLiveSession(live)) return;
+        let payload;
+        try { payload = JSON.parse(event.data); } catch { finishLiveSession(live, '本机实时转写返回了无效事件。', 'warning'); return; }
+        if (payload.type === 'ready') { live.ready = true; state.liveStarting = false; state.recording = true; state.timerId = window.setInterval(tickLive, 1000); tickLive(); renderRecording(); setFeedback('已连接 Paraformer，正在接收实时逐字稿。'); if (live.pendingFinish) requestLiveFinish(live); return; }
+        if (payload.type === 'result') { if (payload.final && cleanText(payload.text)) appendLiveTranscript(payload.text); return; }
+        if (payload.type === 'finished') { finishLiveSession(live, '真实录音已完成转写。你可以检查逐字稿或生成纪要。'); return; }
+        if (payload.type === 'error') finishLiveSession(live, cleanText(payload.message) || '百炼实时转写失败，请检查本机配置后重试。', 'warning');
+      }
+      function tickLive() { if (!state.recording || state.recordingMode !== 'live') return; state.elapsedSeconds += 1; renderRecording(); }
+      async function startLiveRecording() {
+        if (state.recording || state.liveFinishing || state.liveStarting) return;
+        state.recordingMode = 'live';
+        if (!navigator.mediaDevices?.getUserMedia) { renderRecording(); setFeedback('当前浏览器无法访问麦克风。请使用允许麦克风权限的桌面浏览器。', 'warning'); return; }
+        const live = { id: ++state.liveSessionId, cancelled:false, ready:false, pendingFinish:false, finishSent:false, finished:false, stream:null, context:null, source:null, processor:null, silence:null, socket:null };
+        state.live = live; state.liveStarting = true; state.liveFinishing = false; renderRecording(); setFeedback('正在请求麦克风并连接本机 Paraformer 转写服务…');
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio:{ channelCount:1, echoCancellation:true, noiseSuppression:true } }); live.stream = stream;
+          if (!isCurrentLiveSession(live)) { releaseLiveCapture(live); return; }
+          const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContextConstructor) throw new Error('浏览器不支持实时音频采集。');
+          const context = new AudioContextConstructor(); live.context = context; if (context.state === 'suspended') await context.resume();
+          if (!isCurrentLiveSession(live)) { releaseLiveCapture(live); return; }
+          const source = context.createMediaStreamSource(stream); live.source = source; if (typeof context.createScriptProcessor !== 'function') throw new Error('浏览器不支持 PCM 音频采集。');
+          const processor = context.createScriptProcessor(4096, 1, 1); const silence = context.createGain(); live.processor = processor; live.silence = silence; silence.gain.value = 0; source.connect(processor); processor.connect(silence); silence.connect(context.destination);
+          const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/api/asr-stream`); live.socket = socket; socket.binaryType = 'arraybuffer';
+          if (!isCurrentLiveSession(live)) { socket.close(); releaseLiveCapture(live); return; }
+          processor.onaudioprocess = (audioEvent) => { if (isCurrentLiveSession(live) && live.ready && !live.finishSent && socket.readyState === WebSocket.OPEN) socket.send(pcm16Buffer(audioEvent.inputBuffer.getChannelData(0), context.sampleRate)); };
+          socket.onopen = () => { if (isCurrentLiveSession(live)) socket.send(JSON.stringify({ action:'start' })); else socket.close(); };
+          socket.onmessage = (event) => handleLiveEvent(live, event);
+          socket.onerror = () => { if (isCurrentLiveSession(live)) finishLiveSession(live, '无法连接本机实时转写服务。请确认本机服务仍在运行。', 'warning'); };
+          socket.onclose = () => { if (isCurrentLiveSession(live)) finishLiveSession(live, '实时转写连接已关闭。请检查百炼配置后重试。', 'warning'); };
+        } catch (error) {
+          releaseLiveCapture(live);
+          if (state.live === live) { state.live = null; state.recording = false; state.liveStarting = false; state.liveFinishing = false; window.clearInterval(state.timerId); state.timerId = null; state.recordingMode = 'live'; renderRecording(); setFeedback(error instanceof Error && error.message ? `无法启动真实录音：${error.message}` : '无法启动真实录音，请检查麦克风权限。', 'warning'); }
+        }
+      }
+      function stopLiveRecording() {
+        const live = state.live; if (!live || !state.recording || state.recordingMode !== 'live') return;
+        state.recording = false; state.liveFinishing = true; window.clearInterval(state.timerId); state.timerId = null; releaseLiveCapture(live); requestLiveFinish(live); renderRecording(); setFeedback('已停止麦克风录音，正在完成 Paraformer 转写。');
+      }
+      function abandonLiveRecording() {
+        const live = state.live; if (!live) return; live.cancelled = true; live.finished = true; releaseLiveCapture(live); if (live.socket?.readyState === WebSocket.OPEN || live.socket?.readyState === WebSocket.CONNECTING) live.socket.close(); state.live = null; state.recording = false; state.liveStarting = false; state.liveFinishing = false; window.clearInterval(state.timerId); state.timerId = null;
+      }
+      async function generateMinutes() {
+        const transcript = cleanText(elements.transcript.value); if (!transcript) { state.minutes = createMinutes('', elements.topic.value); state.minutesSource = 'demo'; state.minutesAreStale = false; renderMinutes(); setFeedback('逐字稿为空，已显示空状态纪要。', 'warning'); return; }
+        if (!state.connection.configured || !state.connection.serverAvailable) { state.minutes = createMinutes(transcript, elements.topic.value); state.minutesSource = 'demo'; state.minutesAreStale = false; renderMinutes(); const persisted = archiveCurrentMeeting(); setFeedback(persisted ? '已生成纪要，并保存到本机历史列表。' : '已生成纪要，但浏览器存储不可用；记录仅保留在当前页面。', persisted ? 'default' : 'warning'); return; }
+        if (state.generating) return;
+        const generation = { meetingId:state.currentMeetingId, revision:state.draftRevision, topic:cleanText(elements.topic.value), transcript }; state.activeGeneration = generation; state.generating = true; renderMinutes();
+        try {
+          const response = await fetch('/api/minutes', { method:'POST', headers:{ 'content-type':'application/json' }, body:JSON.stringify({ topic:generation.topic, transcript:generation.transcript }) }); const result = await response.json().catch(() => ({})); if (!response.ok) throw new Error(result.message || '本机服务无法生成会议纪要。'); const minutes = normalizeMinutes(result.minutes); if (!minutes) throw new Error('本机服务返回的会议纪要格式无效。');
+          if (state.activeGeneration !== generation || state.currentMeetingId !== generation.meetingId || state.draftRevision !== generation.revision) { if (state.activeGeneration === generation) { state.activeGeneration = null; state.generating = false; renderMinutes(); } setFeedback('当前会议已变化，已丢弃过期的千问结果。', 'warning'); return; }
+          state.minutes = minutes; state.minutesSource = 'qwen'; state.minutesAreStale = false; const persisted = archiveCurrentMeeting(); setFeedback(persisted ? '千问已生成纪要，并保存到本机历史列表。' : '千问已生成纪要，但浏览器存储不可用；记录仅保留在当前页面。', persisted ? 'default' : 'warning');
+        } catch (error) {
+          if (state.activeGeneration === generation && state.currentMeetingId === generation.meetingId && state.draftRevision === generation.revision) { state.minutesAreStale = true; setFeedback(error instanceof Error ? `未生成纪要：${error.message}` : '未生成纪要，请检查本机配置。', 'warning'); }
+        } finally { if (state.activeGeneration === generation) { state.activeGeneration = null; state.generating = false; renderMinutes(); } }
+      }
+      function safeFileName(value) { const sanitized = cleanText(value).replace(/[\\/:*?"<>|]/g, '-').slice(0,36); return sanitized || '会议纪要'; }
+      function downloadMarkdown({ topic, transcript, minutes, successMessage, onSuccess, onError }) {
+        const markdown = toMarkdown({ topic, transcript, minutes }); const blob = new Blob([markdown], { type:'text/markdown;charset=utf-8' });
+        try { const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `${safeFileName(topic)}-会议纪要.md`; document.body.append(anchor); anchor.click(); anchor.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 0); setFeedback(successMessage); onSuccess?.(successMessage); }
+        catch (error) { const errorMessage = '浏览器未允许自动下载。请复制右侧纪要内容后手动保存。'; setFeedback(errorMessage, 'warning'); onError?.(errorMessage); }
+      }
+      function exportMarkdown() {
+        if (state.connection.configured && state.minutesAreStale) { setFeedback('当前逐字稿尚未成功生成千问纪要，无法导出。请重新生成后再试。', 'warning'); return; }
+        const currentMinutes = state.minutesAreStale ? createMinutes(elements.transcript.value, elements.topic.value) : state.minutes;
+        downloadMarkdown({ topic:elements.topic.value, transcript:elements.transcript.value, minutes:currentMinutes, successMessage:'已导出当前会议纪要为 UTF-8 Markdown 文件。' });
+      }
+      function exportHistoryMarkdown() {
+        const record = selectedHistoryRecord(visibleHistoryRecords());
+        if (!record) { const message = '没有可导出的历史会议。'; setFeedback(message, 'warning'); setHistoryExportStatus(message, 'warning'); return; }
+        downloadMarkdown({ topic:record.topic, transcript:record.transcript, minutes:record.minutes, successMessage:'已导出历史会议纪要为 UTF-8 Markdown 文件。', onSuccess:(message) => setHistoryExportStatus(message), onError:(message) => setHistoryExportStatus(message, 'warning') });
+      }
+      function shouldConfirmNewMeeting() { return state.draftDirty || state.draftNeedsRecovery || state.recording || state.liveStarting || state.liveFinishing || state.generating; }
+      function newMeeting() {
+        const previousMeetingId = state.currentMeetingId; clearDraftPersistenceTimer(); const draftClearOutcome = clearPersistedDraft(previousMeetingId);
+        if (draftClearOutcome === 'failed' && state.draftNeedsRecovery) { scheduleDraftPersistence(); setFeedback('无法清除本机草稿；当前会议仍保留。', 'warning'); return false; }
+        abandonLiveRecording(); window.clearInterval(state.timerId); state.timerId = null; state.recording = false; state.recordingMode = 'demo'; state.liveStarting = false; state.liveFinishing = false; state.activeGeneration = null; state.generating = false; state.draftRevision += 1; state.draftDirty = false; state.draftNeedsRecovery = false; state.pendingDraftRestore = null; state.elapsedSeconds = 0; state.segmentIndex = 0; state.currentMeetingId = createMeetingId(); elements.topic.value = ''; elements.transcript.value = ''; state.minutes = createMinutes('', elements.topic.value); state.minutesSource = 'demo'; state.minutesAreStale = false; renderRecording(); renderTranscriptMeta(); renderMinutes();
+        setFeedback(draftClearOutcome === 'foreign' ? '已新建会议；另一标签页的草稿未被改动。' : '已新建会议，历史纪要会继续保留在本机浏览器中。', draftClearOutcome === 'foreign' ? 'warning' : 'default'); return true;
+      }
+      function requestNewMeeting() { if (!shouldConfirmNewMeeting()) { newMeeting(); return; } if (!elements.discardDraftDialog.open) elements.discardDraftDialog.showModal(); }
+      function resetDemo() { requestNewMeeting(); }
+      elements.recordButton.addEventListener('click', () => { if (state.liveFinishing) return; if (state.recording) { if (state.recordingMode === 'live') stopLiveRecording(); else stopDemo(); } else if (state.connection.configured && state.connection.serverAvailable) void startLiveRecording(); else startDemo(); }); elements.resetButton.addEventListener('click', requestNewMeeting); elements.generateButton.addEventListener('click', () => { void generateMinutes(); }); elements.exportButton.addEventListener('click', exportMarkdown);
+      elements.transcript.addEventListener('input', () => { state.draftRevision += 1; markDraftForRecovery(); state.minutesAreStale = true; renderTranscriptMeta(); renderMinutes(); }); elements.topic.addEventListener('input', () => { state.draftRevision += 1; markDraftForRecovery(); state.minutesAreStale = true; renderMinutes(); });
+      elements.settingsButton.addEventListener('click', () => { elements.settingsDialog.showModal(); void refreshConnectionStatus(); }); elements.closeDialogButton.addEventListener('click', () => elements.settingsDialog.close()); elements.settingsDialog.addEventListener('close', () => { elements.connectionApiKey.value = ''; }); elements.saveConnectionButton.addEventListener('click', () => { void saveConnection(); }); elements.restoreDraftButton.addEventListener('click', restorePendingDraft); elements.discardRecoveredDraftButton.addEventListener('click', discardPendingDraft); elements.draftRestoreDialog.addEventListener('keydown', (event) => { if (event.key === 'Escape') { event.preventDefault(); elements.restoreDraftButton.focus(); } }); elements.draftRestoreDialog.addEventListener('cancel', (event) => { event.preventDefault(); elements.restoreDraftButton.focus(); }); elements.continueEditingButton.addEventListener('click', () => elements.discardDraftDialog.close()); elements.discardDraftButton.addEventListener('click', () => { elements.discardDraftDialog.close(); newMeeting(); }); elements.discardDraftDialog.addEventListener('close', () => elements.resetButton.focus());
+      elements.historyButton.addEventListener('click', () => { renderHistory(); elements.historyDialog.showModal(); elements.historyFilter.focus(); }); elements.closeHistoryDialogButton.addEventListener('click', () => elements.historyDialog.close()); elements.historyFilter.addEventListener('input', () => { state.historyQuery = elements.historyFilter.value; renderHistory(); }); elements.historyFilter.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !event.isComposing && elements.historyFilter.value) { event.preventDefault(); elements.historyDialog.close(); } }); elements.historyDialog.addEventListener('close', () => { if (!elements.historyDialog.open) elements.historyButton.focus(); }); elements.historyExportButton.addEventListener('click', exportHistoryMarkdown);
+      window.addEventListener('storage', (event) => { if (event.key !== HISTORY_STORAGE_KEY && event.key !== null) return; try { if (event.storageArea && event.storageArea !== localStorage) return; } catch (error) { return; } reconcileHistoryFromStorage(); }); window.addEventListener('pagehide', flushDraftPersistence); window.addEventListener('beforeunload', abandonLiveRecording); Object.assign(api, { startDemo, stopDemo, startLiveRecording, stopLiveRecording, generateMinutes, exportMarkdown, resetDemo, newMeeting:requestNewMeeting, pcm16Buffer }); renderRecording(); renderTranscriptMeta(); renderMinutes(); renderHistory(); void refreshConnectionStatus(); if (!state.historyPersists) setFeedback('浏览器存储不可用；历史记录仅保留在当前页面。', 'warning'); if (state.pendingDraftRestore) elements.draftRestoreDialog.showModal();
+    })();
+  </script>
+</body>
+</html>
